@@ -1,0 +1,4 @@
+Minute Volume (lpm)	Tidal Volume (ml)	Base Flow (lpm)	PIF (lpm)	PEF (lpm)	PIP (cmH2O)	PEEP (cmH2O)	IPP (cmH2O)	MAP (cmH2O)	Breath Rate	In. Hold (sec)	Ex. Hold (sec)	In. Time (sec)	Ex. Time (sec)	I:E Ratio	Compliance (ml/cmH2O)	Min Airway Press	Assist Press	Time
+1.527	2.3	-----	11.93	1.31	9.7	4.7	9.6	6.8	-3.8	10.94	0.78	15.07	0.90	16.74:1	-----	4.7	0.0	11:28:27
+1.526	1.3	-----	11.64	1.41	9.6	4.7	9.6	6.7	-15.0	2.43	0.47	3.47	0.54	6.43:1	0.3	4.7	0.0
+1.524	1.9	-----	11.89	1.42	9.6	4.7	9.6	6.7	-2.5	16.58	1.09	22.77	1.19	19.13:1	-----	4.6	0.1
