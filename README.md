@@ -23,9 +23,14 @@ plotRestriction.m     | does the plotting for identifyRestriction().
 ### datasets
 file                  | description  
 ---                   | ---  
-FlowMeter1/           | directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
-FlowMeter2/           |directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
+./FlowMeter1/           | directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
+./FlowMeter2/           |directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
 
+### reference material
+(under ./reference_material/ directory)  
+file                  | description  
+---                   | ---  
+2020-04-09_restrictor_diagrams | initial plots of restrictor coeffiecient estiamtes. Includes some useful test case numbers and descriptions.
 
 ## License
     This program is free software: you can redistribute it and/or modify
