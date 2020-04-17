@@ -1,6 +1,10 @@
-function [cropped,cycles]=splitCycle(s,threshold,margin,plt)
+function [partitioned,stats,cycles]=splitCycle(s,threshold,margin)
 %
-% This is a bit rough and ready for now. In simplest usage:
+% This is a bit rough and ready for now, and I can't help thinking there
+% must be a simpler way to go about it. But it works, so it may never
+% change...
+%
+% In simplest usage: 
 %
 % splitCycle(sig) produces some nice plots
 %
@@ -17,11 +21,28 @@ function [cropped,cycles]=splitCycle(s,threshold,margin,plt)
 %                 Finally, there are also _pos and _neg suffixes which
 %                 separate the datasets into inspiration and expiration
 %                 segments, respectively.
-% Don't get too attached to the format of the data output from this
-% function; I plan to revamp it in the next day or so.
+%
+% [partitioned,stats,cycles]=splitCycle(s,threshold,margin)
+% s as before
+% threshold is the low flow cutout to use (flow below this threshold set to
+%           zero)
+% margin is the margin to remove at beginning and end of each inspiration
+%        and expiration phase. It is a scalar or a two element vector
+%        [start_margin end_margin] and defines the number of seconds to be
+%        cropped. This is to avoid transient dynamic effects in the
+%        identification of restriction parameters.
+% stats contains: sample_rate, RR (respiration rate), Vin_frac (to identify
+%                 volume going in as total volume passing through in either
+%                 direction), and inspiration/expiration mode.
+% cycles is a cell array, where each cell is a structure array for one of
+%        the meters. The structure array has one element for each cycle,
+%        and has fields containing, amongst other things, the timeseries
+%        data for the positive (inspiration) and negative (expiration)
+%        phases for that cycle.
 %
 %
-% Some more somewhat cryptic documentation below. To be updated.
+%
+% Some more somewhat cryptic documentation below. To be updated. Hopefully.
 % =========================================================================
 %
 % splits sig data (pressure, flow, volume, time) into individual cycles
@@ -62,29 +83,36 @@ function [cropped,cycles]=splitCycle(s,threshold,margin,plt)
 % but that's not a bad thing.
 
 % input validation & defualts
-if nargin<2 || isempty(threshold),
+if nargin<2 || isempty(threshold), % threshold below which flow is considered zero
     threshold = 0.01;
 end
-if nargin<4,
-    if nargout==0, % by default, plot if no outputs are requested
-        plt=true;
-    else           % otherwise, don't plot
-        plt=false;
-    end
+if nargout==0, % plot figure(s) if no outputs are requested
+    plt=true;
+else           % otherwise, don't plot
+    plt=false;
 end
 if nargin<3 || isempty(margin),
     margin = 0; % seconds
 end
 if numel(margin)<2,
-    margin = margin * [1 1];
+    margin = margin * [1 1]; % start and end margins
 end
 
 %  number of meters saved in the dataset
 n_meters = numel(s);
 
-% so the figures for unavailable meters get closed
-for n = 1:2,
-    if ishandle(100*n+69) && n>n_meters, close(100*n+69); end
+% so the figures for old data get closed and don't confuse things
+fig1=findobj('-regexp','tag','ventilator-splitCycle1');
+fig2=findobj('-regexp','tag','ventilator-splitCycle2');
+if ~plt,
+    close(fig1);
+    close(fig2);
+else
+    close(fig1(2:end)); % just in case
+    close(fig2(2:end)); % just in case
+    if n_meters<2
+        close(fig2);
+    end
 end
 
 % now loop for all meters in dataset
@@ -102,29 +130,24 @@ for n = 1:n_meters,
     sample_time = mean(dt);
     if any(diff(dt)./mean(dt) > 1e-10),
         % This checks that the sampling rate is practically constant
-        % (allowing for numerical rounding). This could potentially be
-        % relaxed to a smaller percentage, then subtly irregular sampling
-        % could just be corrected by resampling here.
-        error('Time series must be sampled at regular intervals. Resample or interpolate to get a useable signal.');
+        % (allowing for numerical rounding).
+        error('Time series must be sampled at regular intervals.');
     end
-    sample_rate = 1/sample_time;
+    stats.sample_rate = 1/sample_time;
     
-    % find respiration rate using autocorrelation
-    % NB it would be nice to interpolate to get an even closer fit - but
-    % not until I've got the cycles plotting nicely over the top of each
-    % other to get an indication of whether it improves anything!
-    a = autocorr(Q,'numlags',numel(Q)-1);
-    % now set first 0.5 s of correlation data to zero to avoid identifying
-    % a period of zero. This will only start to cause problems if the RR is
-    % well over 60 - probably unheard of. (We could also consider using the
-    % gradient, to exclude anything before the first trough but that would
-    % be susceptible to errors in the presence of noisy signals. This shold
-    % be fine for what we're doing.)
-    a(1:ceil(sample_rate/2)) = 0; 
+    % find respiration rate (to nearest sample time) using autocorrelation
+    a=zeros(numel(Q),1);
+    for ii=1:numel(Q),
+        a(ii)=Q(ii:end)'*Q(1:end-ii+1);
+    end
+    % set first 0.5 s of correlation data to zero to avoid identifying
+    % a period of zero. (Fine up to around RR = 2/s = 120/min)
+    a(1:ceil(stats.sample_rate/2)) = 0; 
     [~,RRsamples] = max(a); % number of samples between cycles
-    RR = sample_rate/RRsamples; % respiration rate in 1/s
-    if RR<10/60 || RR>25/60,
-        warning('A respiratory rate of %1.1f breaths per minute seems unusual.',RR*60);
+    stats.RR = stats.sample_rate/RRsamples; % respiration rate in 1/s
+    fprintf('Respiration rate is %0.3f breaths/sec or %0.1f breaths/min\n',stats.RR,stats.RR*60);
+    if stats.RR<10/60 || stats.RR>25/60,
+        warning('A respiratory rate of %1.1f breaths per minute seems unusual.',stats.RR*60);
     end
 
     % determine if this is a symmetric flow (i.e. if it is both inspiratory
@@ -133,41 +156,23 @@ for n = 1:n_meters,
     Qcrop = Q(ceil(crop/2):end-floor(crop/2)); % ensure whole number of cycles to compare here
     Vin=sum(Qcrop(Qcrop>0))*sample_time;    % total volume in over whole number of cycles
     Vout=-sum(Qcrop(Qcrop<0))*sample_time;   % total volume out over whole number of cycles
-    Vfrac = Vin/(Vin+Vout); 
-    fprintf('Inspiration volume fraction (*NOT* related to I:E ratio!) is %2.1f%%\n',Vfrac*100);
-    if Vfrac>90/100,
-        leg = 'inspiration';
-    elseif Vfrac>60/100,
+    stats.Vin_frac = Vin/(Vin+Vout);
+    fprintf('Inspiration volume fraction (*NOT* related to I:E ratio!) is %2.1f%%\n',stats.Vin_frac*100);
+    if stats.Vin_frac>90/100,
+        stats.mode = 'inspiration';
+    elseif stats.Vin_frac>60/100,
         warning('It is not clear where in the circuit this flow meter is placed.');
-        leg = 'more_insp_than_exp';
-    elseif Vfrac>40/100,
-        leg = 'bidirectional';
-    elseif Vfrac>10/100,
+        stats.mode = 'more_insp_than_exp';
+    elseif stats.Vin_frac>40/100,
+        stats.mode = 'bidirectional';
+    elseif stats.Vin_frac>10/100,
         warning('It is not clear where in the circuit this flow meter is placed.');
-        leg = 'more_exp_than_insp';
+        stats.mode = 'more_exp_than_insp';
     else
-        leg = 'expiration';
+        stats.mode = 'expiration';
     end
-    fprintf('Detected mode: %s\n',leg);
-    
-    % find the I:E ratio (this is not working as I'd hoped - shelved for now) 
-    % First, low pass filter at 8 times the respiration rate, to smooth any
-    % noise near the flow reversal; I'm really hoping for only one zero
-    % crossing in the smoothed curve.
-%     Qsmooth = lpfilt(Q,1/sample_rate,1/RR/32); 
-%     dQ = diff(Q); ddQ = diff(dQ); ddQ=[0;ddQ(:)];
-%     figure; subplot(3,1,1);
-%     plot([Q(:) Qsmooth(:)]); grid on;
-%     setMatchXaxes;
-%     subplot(3,1,2);
-%     plot(dQ);grid on;
-%     setMatchXaxes;
-%     subplot(3,1,3);
-%     plot(ddQ);grid on;
-%     setMatchXaxes;
-%     keyboard
-%     return
-    
+    fprintf('Detected mode: %s\n',stats.mode);
+        
     % partition the data according to flow direction
     Qpos = (Q>threshold);
     Qneg = (Q<-threshold);
@@ -207,53 +212,78 @@ for n = 1:n_meters,
     end
     neg = [sni(1:numel(eni)) eni];
     
-    % find start of cycle (using intervals between postive
-    % regions) and discard any regions before this
-    interval = pos(2:end,1)-pos(1:end-1,2);
-    beginning = find(interval>0.95*max(interval));
-    beginning = beginning(1)+1;
-    if pos(beginning,1)>1.1*RRsamples, % this means we started in the middle of an interval, with a 10% margin
-        [~,beginning] = min((pos(:,1)-pos(beginning,1)+RRsamples).^2);
-    end
+    % find start of first cycle
+    % The start of a cycle is defined as start of largest contiguous region
+    % of positive flow within 1/stats.RR seconds of previous cycle start.
+    % (i.e. within one cycle time)
+    indices = pos(:,1)-pos(1,1)<RRsamples;
+    region_size = diff(pos(indices,:)');
+    [~,beginning] = max(region_size);
+    beginning = indices(beginning);
+    % discard any regions before first cycle
     discard = neg(:,1)<pos(beginning,1);
     neg(discard,:)=[];
     discard = pos(:,1)<pos(beginning,1);
     pos(discard,:)=[];
-    
+
     % now group into cycles
     cnt=0;
+    unusedSegmentFlag=false;
     while ~isempty(pos),
         cnt = cnt+1;
         
-        % add positive sections
-        indices = pos(:,1)-pos(1,1) < RRsamples*0.95;
-        cycles{n}(cnt).pos = pos(indices,:);
-        pos(indices,:)=[];
-        
-        if isempty(pos), % no full cycles left
-            cycles{n}(cnt)=[];
+        % find start of next cycle (largest positive region starting
+        % between 95-150% of current cycle)
+        interval = pos(:,1)-pos(1,1);
+        indices = find(interval<RRsamples*1.5 & interval>RRsamples*0.95);
+        region_size = diff(pos(indices,:)');
+        [~,next_pos] = max(region_size);
+        next_pos = indices(next_pos);
+
+        % if we can't find the start of the next cycle then we haven't got
+        % a complete cycle here so finish:
+        if isempty(next_pos),
             break;
-        else
-            % check there are no negative sections overlapping (I don't
-            % know what to do with those)
-            if any(any(neg<=cycles{n}(cnt).pos(end,end))),
-                error('The positive and negative regions in this cycle overlap. Not sure how to treat these.');
-                % could just stick the overlapping bits in the positive side???
-            end
-            
-            % now add the negative sections
-            indices = neg(:,1) < pos(1,1);
-            cycles{n}(cnt).neg = neg(indices,:);
-            neg(indices,:)=[];
         end
+        
+        % otherwise, next contiguous postive section is to be recorded as an
+        % inspiration cycle:
+        cycles{n}(cnt).pos = pos(1,:);
+        
+        % record the largest negative region starting within one cycle as
+        % the expiration cycle
+        indices = neg(:,1)-pos(1,1)<RRsamples;
+        region_size = diff(neg(indices,:)');
+        [~,next_neg] = max(region_size);
+        next_neg = indices(next_neg);
+        cycles{n}(cnt).neg = neg(next_neg,:);
+        
+        % check for anything we didn't use in this cycle and remove
+        % everything before next cycle from the list
+        remove_pos = pos(:,1)<pos(next_pos,1);
+        remove_neg = neg(:,1)<pos(next_pos,1);
+        if sum(remove_pos)>1,
+            unusedSegmentFlag=true;
+        end
+        if sum(remove_neg)>1,
+            unusedSegmentFlag=true;
+        end
+        pos(remove_pos,:)=[];
+        neg(remove_neg,:)=[];
     end
     
-    % collect actual timeseries in cycles too, applying margin at the same time.
-    margin_samples = ceil(50 * margin); % this is hardcoded at 50 Hz because I'm lazy and this is probably all that's needed
-    cropped(n).p=[];cropped(n).Q=[];cropped(n).V=[];cropped(n).t=[];cropped(n).tau=[];
-    cropped(n).p_pos = []; cropped(n).p_neg = []; cropped(n).Q_pos = []; cropped(n).Q_neg = [];
-    cropped(n).V_pos = []; cropped(n).V_neg = []; cropped(n).t_pos = []; cropped(n).t_neg = [];
-    cropped(n).tau_pos = []; cropped(n).tau_neg = []; % tau is the cycle time
+    % warn if there were discarded data segments (orphaned by zero flow
+    % regions)
+    if unusedSegmentFlag,
+        warning('There were sections of nonzero flow orphaned from the contiguous flow regions. These have been discarded.');
+    end
+    
+    % collect actual timeseries data in cycles too, applying margin at the same time.
+    margin_samples = ceil(stats.sample_rate * margin); % this is hardcoded at 50 Hz because I'm lazy and this is probably all that's needed
+    partitioned(n).p=[];partitioned(n).Q=[];partitioned(n).V=[];partitioned(n).t=[];partitioned(n).tau=[];
+    partitioned(n).p_pos = []; partitioned(n).p_neg = []; partitioned(n).Q_pos = []; partitioned(n).Q_neg = [];
+    partitioned(n).V_pos = []; partitioned(n).V_neg = []; partitioned(n).t_pos = []; partitioned(n).t_neg = [];
+    partitioned(n).tau_pos = []; partitioned(n).tau_neg = []; % tau is the cycle time
     for ii = 1:numel(cycles{n})
         cycles{n}(ii).start_pos = cycles{n}(ii).pos(1,1);
         cycles{n}(ii).end_pos = cycles{n}(ii).pos(end,end);
@@ -296,28 +326,28 @@ for n = 1:n_meters,
         
         % amalgamated data:
         if ~isempty(cycles{n}(ii).t_pos),
-            cropped(n).p = [cropped(n).p ; cycles{n}(ii).p_pos ; nan];
-            cropped(n).Q = [cropped(n).Q ; cycles{n}(ii).Q_pos ; nan];
-            cropped(n).V = [cropped(n).V ; cycles{n}(ii).V_pos ; nan];
-            cropped(n).t = [cropped(n).t ; cycles{n}(ii).t_pos ; nan];
-            cropped(n).tau = [cropped(n).tau ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
-            cropped(n).tau_pos = [cropped(n).tau_pos ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
-            cropped(n).p_pos = [cropped(n).p_pos ; cycles{n}(ii).p_pos ; nan];
-            cropped(n).Q_pos = [cropped(n).Q_pos ; cycles{n}(ii).Q_pos ; nan];
-            cropped(n).V_pos = [cropped(n).V_pos ; cycles{n}(ii).V_pos ; nan];
-            cropped(n).t_pos = [cropped(n).t_pos ; cycles{n}(ii).t_pos ; nan];
+            partitioned(n).p = [partitioned(n).p ; cycles{n}(ii).p_pos ; nan];
+            partitioned(n).Q = [partitioned(n).Q ; cycles{n}(ii).Q_pos ; nan];
+            partitioned(n).V = [partitioned(n).V ; cycles{n}(ii).V_pos ; nan];
+            partitioned(n).t = [partitioned(n).t ; cycles{n}(ii).t_pos ; nan];
+            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).tau_pos = [partitioned(n).tau_pos ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).p_pos = [partitioned(n).p_pos ; cycles{n}(ii).p_pos ; nan];
+            partitioned(n).Q_pos = [partitioned(n).Q_pos ; cycles{n}(ii).Q_pos ; nan];
+            partitioned(n).V_pos = [partitioned(n).V_pos ; cycles{n}(ii).V_pos ; nan];
+            partitioned(n).t_pos = [partitioned(n).t_pos ; cycles{n}(ii).t_pos ; nan];
         end
         if ~isempty(cycles{n}(ii).t_neg),
-            cropped(n).p = [cropped(n).p ; cycles{n}(ii).p_neg ; nan];
-            cropped(n).Q = [cropped(n).Q ; cycles{n}(ii).Q_neg ; nan];
-            cropped(n).V = [cropped(n).V ; cycles{n}(ii).V_neg ; nan];
-            cropped(n).t = [cropped(n).t ; cycles{n}(ii).t_neg ; nan];
-            cropped(n).tau = [cropped(n).tau ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
-            cropped(n).tau_neg = [cropped(n).tau_neg ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
-            cropped(n).p_neg = [cropped(n).p_neg ; cycles{n}(ii).p_neg ; nan];
-            cropped(n).Q_neg = [cropped(n).Q_neg ; cycles{n}(ii).Q_neg ; nan];
-            cropped(n).V_neg = [cropped(n).V_neg ; cycles{n}(ii).V_neg ; nan];
-            cropped(n).t_neg = [cropped(n).t_neg ; cycles{n}(ii).t_neg ; nan];
+            partitioned(n).p = [partitioned(n).p ; cycles{n}(ii).p_neg ; nan];
+            partitioned(n).Q = [partitioned(n).Q ; cycles{n}(ii).Q_neg ; nan];
+            partitioned(n).V = [partitioned(n).V ; cycles{n}(ii).V_neg ; nan];
+            partitioned(n).t = [partitioned(n).t ; cycles{n}(ii).t_neg ; nan];
+            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).tau_neg = [partitioned(n).tau_neg ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).p_neg = [partitioned(n).p_neg ; cycles{n}(ii).p_neg ; nan];
+            partitioned(n).Q_neg = [partitioned(n).Q_neg ; cycles{n}(ii).Q_neg ; nan];
+            partitioned(n).V_neg = [partitioned(n).V_neg ; cycles{n}(ii).V_neg ; nan];
+            partitioned(n).t_neg = [partitioned(n).t_neg ; cycles{n}(ii).t_neg ; nan];
         end
     end
     
@@ -327,12 +357,16 @@ for n = 1:n_meters,
         QplotN=Q; QplotN(~Qneg)=nan;
         pplotP=p; pplotP(~Qpos)=nan;
         pplotN=p; pplotN(~Qneg)=nan;
-        figure(100*n+69); clf;
+        fig=findobj('-regexp','tag',sprintf('ventilator-splitCycle%1.0d',n));
+        if isempty(fig),
+            fig=figure('tag',sprintf('ventilator-splitCycle%1.0d',n));
+        else
+            figure(fig);clf;
+        end
         subplot(3,1,1); grid on; hold on;
         xlabel('time /s'); ylabel('pressure /cmH2O');
         plot(t,p,'k-');
         matchXaxes;
- %       plot(cropped(n).t,cropped(n).p,'r-');
         subplot(3,1,2); grid on; hold on;
         xlabel('time /s'); ylabel('flow /(L/s)');
         plot(t,Q,'k-');

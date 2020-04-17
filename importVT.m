@@ -42,7 +42,7 @@ try
     sig.data = sig.data';
     
     % guess timestamps assuming 50Hz logging (from VT+ manual)
-    sig.time = 0:0.02:(size(sig.data,1)-1)/50;
+    sig.time = linspace(0,(size(sig.data,1)-1)/50,size(sig.data,1));
     sig.time = sig.time(:); % to match orientation of data matrix.
     
     % close file

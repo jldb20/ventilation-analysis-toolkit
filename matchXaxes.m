@@ -4,7 +4,7 @@ if nargin<1,
 end
 % helps set up for matchXaxes
 addlistener(h, 'XLim', 'PostSet', @matchXaxes_callback); % so we can zoom in and compare p & Q data easily
-set(h, 'tag', 'matchXaxes');
+set(h, 'userdata', 'matchXaxes');
 
 
 function matchXaxes_callback(o,e)
@@ -19,7 +19,7 @@ fig = get(a,'parent');
 xl = get(a,'xlim');
 cc=get(fig,'children');
 for jj=1:numel(cc),
-    if strcmp(get(cc(jj),'type'),'axes') && strcmp(get(cc(jj),'tag'),'matchXaxes'),
+    if strcmp(get(cc(jj),'type'),'axes') && strcmp(get(cc(jj),'userdata'),'matchXaxes'),
         set(cc(jj),'xlim',xl);
     end
 end

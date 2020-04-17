@@ -43,6 +43,8 @@ for ii=1:n_meters
     parcull{ii}=[];
 end
 switch fn
+    case 'v01'
+        endindex(1) = find(sig_in(1).time>108,1);
     case 'v08'
         startindex(2) = find(sig_in(2).time>13.66,1);
         parcull{2} = 1:4;
