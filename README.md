@@ -6,23 +6,24 @@ These contents have grown out of the need for tools to analyse experiments on Ve
 ## Quick start examples
 
 If you want to see the identification results for some or all of the 'v'-prefixed restrictor tests, then:
-1. Run one of:
-    restrictorSweep('v',{112:114},true,[],0.2); % select results
-    restrictorSweep('v',{1:3,4:6,7:9,10:12,13:15,16:18,19:21,22:24,25:27,28:30,31:33,34:36,37:39,40:42,109:111,112:114,115:117},true,[],0.2); % all results
+1. Run one of:  
+      restrictorSweep('v',{112:114},true,[],0.2); % select results  
+      restrictorSweep('v',{1:3, 4:6, 7:9, 10:12, 13:15, 16:18, 19:21, 22:24, 25:27, 28:30, 31:33, 34:36, 37:39, 40:42, 109:111, 112:114, 115:117},true,[],0.2); % all results
+
 2. Paste tab-delimited clipboard data directly into Excel or a text editor. (On *nix you can copy output from the concole to paste; MATLAB clipboard functions may not work?)
 3. Look at figures in ./reference_material/restrictor_graphs to see results.
 
-For more detail on the processing of a specific set of tests, try:
-    identifyRestriction2({'v112','v113','v114'},0.2,[],'standard')
+For more detail on the processing of a specific set of tests, try:  
+    identifyRestriction2({'v112','v113','v114'},0.2,[],'standard')  
 
-And to understand the preprocessing of one of these sets try:
-    sig=importWrapper('v112'); splitCycle(sig,[],0.2)
-or for a bidirectional flow check out
-    sig=importWrapper('v43'); splitCycle(sig,[],0.2)
-
-If you just want raw data, have a look at importWrapper, or importVT e.g.
-    [sig,par] = importWrapper('v43');
-          sig = importVT('FlowMeter1/v43.sig']);
+And to understand the preprocessing of one of these sets try:  
+    sig=importWrapper('v112'); splitCycle(sig,[],0.2)  
+or for a bidirectional flow check out  
+    sig=importWrapper('v43'); splitCycle(sig,[],0.2)  
+  
+If you just want raw data, have a look at importWrapper, or importVT e.g.  
+    `[sig,par] = importWrapper('v43');  `  
+          `sig = importVT('FlowMeter1/v43.sig']);  `
 
 
 ## Contents
