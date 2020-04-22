@@ -29,7 +29,7 @@ or for a bidirectional flow check out
 If you just want raw data, have a look at importWrapper, or importVT e.g.
 
     [sig,par] = importWrapper('v43');  
-          sig = importVT('FlowMeter1/v43.sig']); 
+      raw_sig = importVT('FlowMeter1/v43.sig']); 
         
 
 ## Contents
