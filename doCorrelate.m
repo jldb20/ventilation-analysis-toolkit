@@ -40,6 +40,8 @@ s_corr(2).t = s(2).t(1:corr_length);
 s_corr(1).t = s(1).t(1:corr_length);
 s_corr(1).p = s(1).p(1:corr_length);
 s_corr(1).Q = s(1).Q(1:corr_length);
+s_corr(2).label = s(2).label;
+s_corr(1).label = s(1).label;
 
 if debug,
     close(399);

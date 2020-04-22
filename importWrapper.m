@@ -3,7 +3,8 @@ function [sig,par] = importWrapper(fn)
 % - imports both sig and par files
 % - removes invalid data (checked & identified manually)
 % - organises data into convenient structures
-% - checks for files from second meter and imports both datasets if they exist 
+% - checks for files from second meter and imports both datasets if they exist
+% - checks for labels in case_labels and includes them if they exist
 %
 % sig(n) has fields: p, Q, V, t (cmH2O, L/s, L, s)
 %                    pressure, flow rate, volume: raw data from Fluke VT+
@@ -97,6 +98,17 @@ for ii=1:n_meters % now crop datasets
     sig_in(ii).time = sig_in(ii).time - sig_in(ii).time(1);
 end
 
+% check for label for dataset
+label = '[no label found]'; % default label
+if exist('FlowMeter1/case_labels.mat','file'),
+    a=load('FlowMeter1\case_labels.mat');
+    if isfield(a,'case_labels'),
+        case_labels=a.case_labels;
+        if isfield(case_labels,fn),
+            label=case_labels.(fn);
+        end
+    end
+end
 
 % extract relevant data from relevant columns
 for ii = 1:n_meters,
@@ -112,6 +124,7 @@ for ii = 1:n_meters,
             sig(ii).V = d{ii}(:,jj);
         end
     end
+    sig(ii).label = label;
     
     if size(par_in(ii).data,1)>0,
         for jj=1:numel(par_in(ii).header),  % par file
@@ -137,6 +150,7 @@ for ii = 1:n_meters,
                 par(ii).IE = mean(par_in(ii).data(:,jj));
             end
         end
+        par(ii).label = label;
     else % in case .par file has no data rows
         par(ii).C = 0;
         par(ii).PIP = 0;
@@ -148,6 +162,7 @@ for ii = 1:n_meters,
         par(ii).intime = 0;
         par(ii).extime = 0;
         par(ii).IE = 0;
+        par(ii).label = '';
     end
     
     % Use consistent units

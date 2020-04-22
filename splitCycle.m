@@ -216,7 +216,7 @@ for n = 1:n_meters,
     % The start of a cycle is defined as start of largest contiguous region
     % of positive flow within 1/stats.RR seconds of previous cycle start.
     % (i.e. within one cycle time)
-    indices = pos(:,1)-pos(1,1)<RRsamples;
+    indices = find(pos(:,1)-pos(1,1)<RRsamples);
     region_size = diff(pos(indices,:)');
     [~,beginning] = max(region_size);
     beginning = indices(beginning);
@@ -252,7 +252,7 @@ for n = 1:n_meters,
         
         % record the largest negative region starting within one cycle as
         % the expiration cycle
-        indices = neg(:,1)-pos(1,1)<RRsamples;
+        indices = find(neg(:,1)-pos(1,1)<RRsamples);
         region_size = diff(neg(indices,:)');
         [~,next_neg] = max(region_size);
         next_neg = indices(next_neg);
@@ -279,6 +279,10 @@ for n = 1:n_meters,
     end
     
     % collect actual timeseries data in cycles too, applying margin at the same time.
+    % NB this is capable of dealing with multiple rows in cycles{n}(ii).pos
+    % and cycles{n}(ii).neg, representing multiple regions included in one
+    % inspiration/expiration phase, despite the fact at present only one
+    % region will be included for each by the algorithm above. 
     margin_samples = ceil(stats.sample_rate * margin); % this is hardcoded at 50 Hz because I'm lazy and this is probably all that's needed
     partitioned(n).p=[];partitioned(n).Q=[];partitioned(n).V=[];partitioned(n).t=[];partitioned(n).tau=[];
     partitioned(n).p_pos = []; partitioned(n).p_neg = []; partitioned(n).Q_pos = []; partitioned(n).Q_neg = [];
@@ -314,14 +318,17 @@ for n = 1:n_meters,
         cycles{n}(ii).p = p(cycles{n}(ii).indices);
         cycles{n}(ii).Q = Q(cycles{n}(ii).indices);
         cycles{n}(ii).t = t(cycles{n}(ii).indices);
+        cycles{n}(ii).tau = cycles{n}(ii).t-cycles{n}(ii).t(1);
         cycles{n}(ii).V = V(cycles{n}(ii).indices);
         cycles{n}(ii).p_pos = p(cycles{n}(ii).indices_pos);
         cycles{n}(ii).Q_pos = Q(cycles{n}(ii).indices_pos);
         cycles{n}(ii).t_pos = t(cycles{n}(ii).indices_pos);
+        cycles{n}(ii).tau_pos = cycles{n}(ii).t_pos-cycles{n}(ii).t(1);
         cycles{n}(ii).V_pos = V(cycles{n}(ii).indices_pos);
         cycles{n}(ii).p_neg = p(cycles{n}(ii).indices_neg);
         cycles{n}(ii).Q_neg = Q(cycles{n}(ii).indices_neg);
         cycles{n}(ii).t_neg = t(cycles{n}(ii).indices_neg);
+        cycles{n}(ii).tau_neg = cycles{n}(ii).t_neg-cycles{n}(ii).t(1);
         cycles{n}(ii).V_neg = V(cycles{n}(ii).indices_neg);
         
         % amalgamated data:
@@ -330,8 +337,8 @@ for n = 1:n_meters,
             partitioned(n).Q = [partitioned(n).Q ; cycles{n}(ii).Q_pos ; nan];
             partitioned(n).V = [partitioned(n).V ; cycles{n}(ii).V_pos ; nan];
             partitioned(n).t = [partitioned(n).t ; cycles{n}(ii).t_pos ; nan];
-            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
-            partitioned(n).tau_pos = [partitioned(n).tau_pos ; cycles{n}(ii).t_pos-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_pos-cycles{n}(ii).t(1) ; nan];
+            partitioned(n).tau_pos = [partitioned(n).tau_pos ; cycles{n}(ii).t_pos-cycles{n}(ii).t(1) ; nan];
             partitioned(n).p_pos = [partitioned(n).p_pos ; cycles{n}(ii).p_pos ; nan];
             partitioned(n).Q_pos = [partitioned(n).Q_pos ; cycles{n}(ii).Q_pos ; nan];
             partitioned(n).V_pos = [partitioned(n).V_pos ; cycles{n}(ii).V_pos ; nan];
@@ -342,8 +349,8 @@ for n = 1:n_meters,
             partitioned(n).Q = [partitioned(n).Q ; cycles{n}(ii).Q_neg ; nan];
             partitioned(n).V = [partitioned(n).V ; cycles{n}(ii).V_neg ; nan];
             partitioned(n).t = [partitioned(n).t ; cycles{n}(ii).t_neg ; nan];
-            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
-            partitioned(n).tau_neg = [partitioned(n).tau_neg ; cycles{n}(ii).t_neg-cycles{n}(ii).t_pos(1) ; nan];
+            partitioned(n).tau = [partitioned(n).tau ; cycles{n}(ii).t_neg-cycles{n}(ii).t(1) ; nan];
+            partitioned(n).tau_neg = [partitioned(n).tau_neg ; cycles{n}(ii).t_neg-cycles{n}(ii).t(1) ; nan];
             partitioned(n).p_neg = [partitioned(n).p_neg ; cycles{n}(ii).p_neg ; nan];
             partitioned(n).Q_neg = [partitioned(n).Q_neg ; cycles{n}(ii).Q_neg ; nan];
             partitioned(n).V_neg = [partitioned(n).V_neg ; cycles{n}(ii).V_neg ; nan];

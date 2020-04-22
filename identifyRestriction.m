@@ -1,4 +1,4 @@
-function models = identifyRestriction(fn,margin)
+function models = identifyRestriction(fn,margin,withFig,c_selection)
 % function to estimate restriction from two .sig files, [fn '.sig'],
 % located in 'FlowMeter1/' and 'FlowMeter2/' respectively.
 %
@@ -10,6 +10,17 @@ function models = identifyRestriction(fn,margin)
 % 2-element vector defining the time to remove from start and end,
 % respectively.
 %
+% c_selection is a cell array of models to include (see output, below).
+%             Default is all models. (only relevant to plotting).
+%             e.g. {'mixed','turbulent','linear'}. If a string is given it
+%             is automatically converted to a 1x1 cell array. Combinations
+%             can also be supported, so far:
+%             'standard' = {'mixed','turbulent','linear'}
+%
+% If no output arguments are given then it plots results. If arguments are
+% given and you still want figures, set the third input argument as the
+% string 'withFig'.
+%
 % Examples:
 % identifyRestriction('v01',0.2)
 % identifyRestriction({'v01','v02','v03'},[0.2 0.2])
@@ -18,25 +29,35 @@ function models = identifyRestriction(fn,margin)
 % models(n).label = 'mixed'     quadratic fit (mixed flow model, 2000<Re<4000), constrained to origin 
 % models(n).label = 'turbulent' squared fit (turbulent flow model, Re>4000), constrained to origin 
 % models(n).label = 'laminar'   linear fit (laminar flow model, Re<2000), constrained to origin
-% models(n).label = 'valve_lin' check valve model; linear fit, zero-flow offset 
+% models(n).label = 'valve_lin' check valve model; linear fit, zero-flow pressure offset 
 % models(n).c2 quadratic loss coefficient 
 % models(n).c1 linear loss coefficient 
 % models(n).c0 constant loss coefficient 
 % models(n).c  vector of all coefficients (lowest to highest order) 
 %
-% output units are L for volume, cmH2O for pressure, and s for time. No
-% exceptions. No mL or lpm or 1/min or any nonsense like that.
+% Output units are L for volume, cmH2O for pressure, s for time, and
+% permutations thereof. No exceptions. No mL or lpm or 1/min or anything
+% like that.
+%
+% This uses Method 1, based on aligning full timeseries. A Method 2 is in
+% development at the time of writing, which uses phase-averaged signals
+% from the datasets.
+%
 
 % setup
-if nargout>0, % argument to disable plotting if numerical output is requested
+if nargin<3, withFig = 'noThanks'; end
+if nargout>0 && ~strcmp(withFig,'withFig'), % argument to disable plotting if numerical output is requested, unless figs are specifically requested in the input args
     plt = false;
 else
     plt = true;
 end
 maxme=true; % maximise all multi-plot figures?
-if nargin<2
+if nargin<2 || isempty(margin),
     warning('No margin specified; defaulting to 0.2 seconds at start and end.');
     margin = 0.2;
+end
+if nargin<4,
+    c_selection = [];
 end
 if numel(margin)<2,
     margin = [1 1] * margin;
@@ -140,7 +161,32 @@ fprintf('loss coeffs between meters: c2 = %0.3e cmH2O/(L/s)^2   c1 = %0.3e cmH2O
 
 % plot p-Q relationship
 if plt
-    plotRestriction(s_corr,c,maxme,s_corr_markers,fns);
+    % selecting which fits to plot
+    if isempty(c_selection), 
+        c_sel = [1:4];
+    else
+        c_sel =[];
+        for ii=1:numel(c_selection),
+            switch c_selection{ii},
+                case 'mixed',
+                    c_sel(end+1) = 1;
+                case 'turbulent',
+                    c_sel(end+1) = 2;
+                case 'laminar',
+                    c_sel(end+1) = 3;
+                case 'valve_lin',
+                    c_sel(end+1) = 4;
+                case 'standard',
+                    c_sel(end+1) = 1;
+                    c_sel(end+1) = 2;
+                    c_sel(end+1) = 3;
+                otherwise
+                    warning('unrecognised model type in c_selection input');
+            end
+        end
+    end
+        
+    plotRestriction(s_corr,c(c_sel,:),maxme,s_corr_markers,fns);
 end
 
 % assign outputs
