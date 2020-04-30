@@ -93,6 +93,7 @@ if nargin<6 || isempty(plotCombined),
     plotCombined = false;
 end
 
+hx=[];
 if nargin>4 && ~isempty(cycles), % plots the underlying data for the phase-averaged cases
     for ii=1:numel(cycles),
         for jj=1:numel(cycles{ii}{1})
@@ -137,8 +138,10 @@ for ii=1:numel(cycles),
     meter1_cycles = sprintf('%s%2.0d,',meter1_cycles,numel(cycles{ii}{1}));
     meter2_cycles = sprintf('%s%2.0d,',meter2_cycles,numel(cycles{ii}{2}));
 end
-meter1_cycles(end)=[];
-meter2_cycles(end)=[];
+if numel(meter1_cycles)>0,
+    meter1_cycles(end)=[];
+    meter2_cycles(end)=[];
+end
     
 leg={leg{:},sprintf('meter 1 (%s cycles)',meter1_cycles),sprintf('meter 2 (%s cycles)',meter2_cycles)};
 xlabel('time /s'); legend([h(:);hx(:)],leg); grid on;
