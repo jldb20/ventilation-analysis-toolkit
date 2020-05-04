@@ -1,4 +1,4 @@
-function models = identifyRestriction2(fn,margin,withFig,c_selection)
+function [models, phase_av] = identifyRestriction2(fn,margin,withFig,c_selection)
 % function to estimate restriction from two .sig files, [fn '.sig'],
 % located in 'FlowMeter1/' and 'FlowMeter2/' respectively.
 %

@@ -12,7 +12,7 @@ elseif ischar(fitmode),
             fprintf('fitting: p = c2*Q*|Q| + c1*Q\n'); ord=[2 1];
         case 'squared', % quadratic curve, pure y=c2*x^2 relationship (1 parameter)
             X = [x(:).*abs(x(:))];
-            fprintf('fitting: p = c2*Q*|Q| + c1*Q\n'); ord=[2];
+            fprintf('fitting: p = c2*Q*|Q|\n'); ord=[2];
         case 'linear', % linear curve, (2 parameters)
             X = [x(:) ones(size(x(:)))];
             fprintf('fitting: p = c1*Q + c0\n'); ord=[1 0];

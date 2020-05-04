@@ -59,6 +59,9 @@ end
 if nargin<4,
     c_selection = [];
 end
+if ischar(c_selection),
+    c_selection = {c_selection};
+end
 if numel(margin)<2,
     margin = [1 1] * margin;
 end
