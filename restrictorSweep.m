@@ -1,4 +1,6 @@
-function models=restrictorSweep(prefix,range,doPics,method,margin)
+function models=restrictorSweep(prefix,range,doPics,method,margin,c_selection)
+% models=restrictorSweep(prefix,range,doPics,method,margin,c_selection)
+%
 % Sweeps a range of test cases to produce estimates of the restriction
 % between two meters. Can also amalagamate test sets into groups for the
 % purpose of restriction parameter estimation.
@@ -18,6 +20,8 @@ function models=restrictorSweep(prefix,range,doPics,method,margin)
 %        the start and end of each inspiration and each expiration phase,
 %        or a 2-element vector defining the time to remove from start and
 %        end, respectively.
+% c_selection is a cell array of models to include, as passed to
+%             identifyRestriction.
 %
 % models is a cell array of model outputs from identifyRestriction
 %
@@ -37,6 +41,9 @@ end
 if nargin<4 || isempty(method),
     method = @identifyRestriction2;
 end
+if nargin<5,
+    c_selection=[];
+end
 
 % if only a vector is given, then rearrange into cell array.
 if ~iscell(range),
@@ -54,7 +61,7 @@ for jj=1:numel(range)
     end
     
     % do identification
-    models{jj} = method(fns{jj},margin,withFig); % use default margin
+    models{jj} = method(fns{jj},margin,withFig,c_selection); 
     
     % save graphs if requested
     if doPics,

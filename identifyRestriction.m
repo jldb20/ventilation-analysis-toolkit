@@ -1,4 +1,6 @@
 function models = identifyRestriction(fn,margin,withFig,c_selection)
+% models = identifyRestriction(fn,margin,withFig,c_selection)
+%
 % function to estimate restriction from two .sig files, [fn '.sig'],
 % located in 'FlowMeter1/' and 'FlowMeter2/' respectively.
 %
@@ -15,7 +17,7 @@ function models = identifyRestriction(fn,margin,withFig,c_selection)
 %             e.g. {'mixed','turbulent','linear'}. If a string is given it
 %             is automatically converted to a 1x1 cell array. Combinations
 %             can also be supported, so far:
-%             'standard' = {'mixed','turbulent','linear'}
+%             'standard' = {'mixed','turbulent','laminar'}
 %
 % If no output arguments are given then it plots results. If arguments are
 % given and you still want figures, set the third input argument as the
