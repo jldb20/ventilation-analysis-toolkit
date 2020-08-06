@@ -44,7 +44,7 @@ identifyRestriction.m  | tries to identify a restriction between two flow meters
 identifyRestriction2.m | This is now the preferred method for identifying restrictions. It uses the pressure difference from phase-averaged signals from two meters.
 doCorrelate.m          | correlates two signals and returns aligned versions of the signals. Used for method 1 in the restriction identification.  
 restrictorSweep.m      | sweeps through multiple test cases (or groups of tests) and compiles outputs in tab-delimited form. Can also save graphs showing identification.
-reportTidalVolumeVariability | reports on tidal volume stats for range of cases
+reportTidalVolumeVariability.m | reports on tidal volume stats for range of cases
 
 
 ### supporting functions
@@ -58,8 +58,8 @@ plotRestriction.m     | does the plotting for identifyRestriction().
 ### datasets
 file                  | description  
 ---                   | ---  
-./FlowMeter1/         | directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
-./FlowMeter2/         |directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
+./FlowMeter1/         | directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v') and 2020-08-04 (prefix 'A').  
+./FlowMeter2/         | directory with data files from ventilator component tests of 2020-03-29 (prefixes 'M' and 'S') and 2020-04-06 (prefix 'v').  
 
 ### reference material
 (under ./reference_material/ directory)  
